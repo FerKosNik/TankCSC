@@ -4,11 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
+#include "DamageTaker.h"
+#include "GameStructs.h"
 #include "TankPawn.generated.h"
 
 class UStaticMeshComponent;
+class ACannon;
 UCLASS()
-class TANKOGEDDON_API ATankPawn : public APawn
+class TANKOGEDDON_API ATankPawn : public APawn, public IDamageTaker
 {
 	GENERATED_BODY()
 
@@ -18,9 +21,38 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 	void MoveForward(float Value);
+	void RotateRight(float Value);
+
+	void SetupCannon(TSubclassOf<ACannon> newCannon);
+	void ChangeCannon();
+
+	void Fire();
+	void FireSpecial();
+
+	UFUNCTION(BlueprintCallable)
+	class UHealthComponent* GetHealthComponent() const { return HealthComponent; }
+
+	UFUNCTION()
+	virtual void TakeDamage(FDamageData DamageData) override;
+
+	ACannon* GetCannon() const { return Cannon; }
+	FVector GetTurretForwardVector() const { return TurretMesh->GetForwardVector(); }
+
+	float GetMovementAccurency() const { return MovementAccurency; }
+	TArray<FVector> GetPatrollinPoints() const { return PattrollingPoints; }
+
+	void RotateTurretTo(FVector TargetPosition);
+
+	FVector GetEyesPosition() const;
 
 protected:
 	virtual void BeginPlay() override;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AIComponents")
+	float MovementAccurency = 50.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AIComponents", Meta = (MakeEditWidget = true))
+	TArray<FVector> PattrollingPoints;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Components")
 	UStaticMeshComponent* BodyMesh;
@@ -37,9 +69,35 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Components")
 	class UCameraComponent* Camera;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Components")
+	class UHealthComponent* HealthComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cannon")
+	TSubclassOf<ACannon> EquippedCannonClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cannon")
+	TSubclassOf<ACannon> SecondCannonClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cannon")
+	class UArrowComponent* CannonSetupPoint;
+
+	UPROPERTY()
+	ACannon* Cannon;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float MovementSpeed = 100.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	float RotationSpeed = 100.0f;
+
+	void Die();
+	void DamageTaked(float Value);
 private:
+	class ATankController* TankController;
+
 	float ForwardMoveAxisValue = 0.0f;
+	float RotateRightAxisValue = 0.0f;
+	float CurrentRightAxisValue = 0.0f;
+	float RotateInterpolationKey = 0.1f;
+	float TurretInterpolationKey = 0.5f;
 };
